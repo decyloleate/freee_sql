@@ -1,0 +1,107 @@
+/*
+個社単位経費率検討
+
+<留意事項>
+簡略化
+　　┣　請求の成功/失敗は無視
+　　┣　請求のポイント払いはポイント付与対象外を無視
+　　┗　一部の特例顧客(ポイント率増)を無視
+
+FY2024売上高25,430,756千円・・・(i)
+
+https://contents.xj-storage.jp/xcontents/AS08692/1363390f/05b2/4e5d/a7ea/8abb1ca572ee/20240814145445129s.pdf(p.12)
+R&D比率：25.8%(2022), 35.7%(2023), 32.8%(2024) = mean:31.4%
+G&A比率：17.7%(2022), 15.9%(2023), 12.8%(2024) = mean:15.5%
+上記より対売上に対する固定比率(マーケ費用除外分)を46.9%とおく・・・(ii)
+
+会員(アクティベーション済)  数取得を下記SQLより出力;user
+2024-06-30時点:7,058
+
+FY2024 カード事業請求額 : 16,731,713,859円;revenue 
+FY2024 カード事業売上高(売上*2% 一律) : 334,634,277円;revenue・・・(iii)
+
+固定費：156,943,475円・・・(iii)*(ii)
+一人当たり固定費：156,943,475円 ÷ 7,058人 = 22,236円
+
+個社ごとのマーケ費用(ポイント限)：77,856,419円;point
+マーケ費用率：23.3%
+
+*/
+
+with
+user as (
+    select auth_company_id, FirstActivatedDate
+    from(
+        -- 初めてアクティベーションを実施した日付
+        select
+            auth_company_id,
+            min(date(activated_at)) FirstActivatedDate
+        from "ath-fsc-card-management-production".cards
+        where 
+            date(dt) = current_date - interval '1' day
+        group by auth_company_id
+    )
+    where FirstActivatedDate <= date('2024-06-30')
+),
+
+revenue as (
+    select
+        auth_company_id,
+        sum(amount) "FY2024請求金額",
+        sum(amount) * 0.02 "FY2024売上金額"
+    from(
+        select cs.auth_company_id,
+               cs.name,
+               cs.amount
+        from "ath-fsc-billing-production".company_snapshots cs
+            left join "ath-fsc-billing-production".company_billings cb on cs.company_billing_id = cb.id
+        where date(cb.dt) = current_date - interval '1' day
+          and date(cs.dt) = current_date - interval '1' day
+          and cb.fixed_date between date('2023-07-01') and date('2024-06-30')
+    )
+    group by auth_company_id
+),
+
+point as (
+    select
+        auth_company_id,
+        sum(PointAmount) "MKT費用(ポイント)"
+    from(
+        select 
+            cb.fixed_date FixedDate,
+            extract(year from cb.fixed_date)*100 + extract(month from cb.fixed_date) YearMonth,
+            cs.auth_company_id,
+            cs.name,
+            cs.amount,
+            -- 付与額の計算: ルールごとに計算し、ルールごとに切り上げを行う（システム側の仕様に合わせる）
+            -- cf: https://freee.slack.com/archives/C01KUSR4C2X/p1686888806622099
+            -- (1) 全員に0.3%
+            ceiling(
+                (case when cs.amount > 0 then cs.amount else 0 end) * 0.003
+            )
+            -- (2) 50万円以上である場合、その分に0.2%
+            + ceiling(
+                (case when cs.amount >= 500000 then cs.amount else 0 end) * 0.002
+            ) PointAmount
+        from "ath-fsc-billing-production".company_snapshots cs
+            left join "ath-fsc-billing-production".company_billings cb on cs.company_billing_id = cb.id
+        where date(cb.dt) = current_date - interval '1' day
+          and date(cs.dt) = current_date - interval '1' day
+          and cb.fixed_date between date('2023-07-01') and date('2024-06-30')
+    )
+    group by auth_company_id
+)
+
+select 
+    revenue.auth_company_id,
+    revenue."FY2024請求金額",
+    cast(revenue."FY2024売上金額" as integer) "FY2024売上金額",
+    cast(point."MKT費用(ポイント)" as integer) "変動費(ポイント)",
+    22236 "固定費",
+    cast("FY2024売上金額" - point."MKT費用(ポイント)" - 22236 as integer) "PL",
+    cast((point."MKT費用(ポイント)" + 22236) / nullif(revenue."FY2024売上金額",0) * 100 as integer) "経費率(%)",
+    user.FirstActivatedDate
+from revenue
+    left join point on revenue.auth_company_id = point.auth_company_id
+    left join user on revenue.auth_company_id = user.auth_company_id
+-- where revenue.auth_company_id = 10815798
