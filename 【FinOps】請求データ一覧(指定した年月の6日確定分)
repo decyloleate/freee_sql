@@ -1,0 +1,30 @@
+with add as(
+    select 
+        p.department,
+        p.position,
+        p.name,
+        c.name "会社名",
+        p.email,
+        c.auth_company_id
+    from "ath-fsc-card-management-production".presidents p
+        inner join "ath-fsc-card-management-production".companies c
+            on c.id = p.company_id and c.dt = p.dt
+    where date(p.dt) = current_date - interval '1'day
+    and current_input_step > 6
+)
+
+select cs.auth_company_id,
+       cs.name,
+       add.name name_2,
+       cs.amount,
+       cs.account_number,
+       sba.transfer_allowed
+from "ath-fsc-billing-production".company_snapshots cs
+    left join "ath-fsc-billing-production".company_billings cb on cs.company_billing_id = cb.id
+    left join "ath-fsc-billing-production".settlement_bank_accounts sba on cs.auth_company_id = sba.auth_company_id
+    left join add on cs.auth_company_id = add.auth_company_id
+where date(cb.dt) = CURRENT_DATE - interval '1' DAY
+  and date(cs.dt) = CURRENT_DATE - interval '1' DAY
+  and date(sba.dt) = CURRENT_DATE - interval '1' DAY
+  and cb.fixed_date = date('{{year}}-{{month}}-06')
+  and cs.amount > 0
