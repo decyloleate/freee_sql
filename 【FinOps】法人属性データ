@@ -1,0 +1,169 @@
+with agg as(
+    select *, row_number() over (partition by auth_company_id order by "法人情報最終更新日" desc) RowNum
+    from(
+        select
+            cast('FRI' as varchar) || cast(c.auth_company_id as varchar) "debtor_id",
+            2 "structure",
+            c.auth_company_id,
+            
+            -- 申込者情報=================================================
+            pr.family_name last_name,
+            pr.first_name first_name,
+            pr.family_name_kana kana_last,
+            pr.first_name_kana kana_first,
+            pr.birthdate birthdate,
+            '' "gender",
+            pr.zip_code,
+            case
+                when pr.prefecture_code = 1 then '北海道'
+                when pr.prefecture_code = 2 then '青森県'
+                when pr.prefecture_code = 3 then '岩手県'
+                when pr.prefecture_code = 4 then '宮城県'
+                when pr.prefecture_code = 5 then '秋田県'
+                when pr.prefecture_code = 6 then '山形県'
+                when pr.prefecture_code = 7 then '福島県'
+                when pr.prefecture_code = 8 then '茨城県'
+                when pr.prefecture_code = 9 then '栃木県'
+                when pr.prefecture_code = 10 then '群馬県'
+                when pr.prefecture_code = 11 then '埼玉県'
+                when pr.prefecture_code = 12 then '千葉県'
+                when pr.prefecture_code = 13 then '東京都'
+                when pr.prefecture_code = 14 then '神奈川県'
+                when pr.prefecture_code = 15 then '新潟県'
+                when pr.prefecture_code = 16 then '富山県'
+                when pr.prefecture_code = 17 then '石川県'
+                when pr.prefecture_code = 18 then '福井県'
+                when pr.prefecture_code = 19 then '山梨県'
+                when pr.prefecture_code = 20 then '長野県'
+                when pr.prefecture_code = 21 then '岐阜県'
+                when pr.prefecture_code = 22 then '静岡県'
+                when pr.prefecture_code = 23 then '愛知県'
+                when pr.prefecture_code = 24 then '三重県'
+                when pr.prefecture_code = 25 then '滋賀県'
+                when pr.prefecture_code = 26 then '京都府'
+                when pr.prefecture_code = 27 then '大阪府'
+                when pr.prefecture_code = 28 then '兵庫県'
+                when pr.prefecture_code = 29 then '奈良県'
+                when pr.prefecture_code = 30 then '和歌山県'
+                when pr.prefecture_code = 31 then '鳥取県'
+                when pr.prefecture_code = 32 then '島根県'
+                when pr.prefecture_code = 33 then '岡山県'
+                when pr.prefecture_code = 34 then '広島県'
+                when pr.prefecture_code = 35 then '山口県'
+                when pr.prefecture_code = 36 then '徳島県'
+                when pr.prefecture_code = 37 then '香川県'
+                when pr.prefecture_code = 38 then '愛媛県'
+                when pr.prefecture_code = 39 then '高知県'
+                when pr.prefecture_code = 40 then '福岡県'
+                when pr.prefecture_code = 41 then '佐賀県'
+                when pr.prefecture_code = 42 then '長崎県'
+                when pr.prefecture_code = 43 then '熊本県'
+                when pr.prefecture_code = 44 then '大分県'
+                when pr.prefecture_code = 45 then '宮崎県'
+                when pr.prefecture_code = 46 then '鹿児島県'
+                when pr.prefecture_code = 47 then '沖縄県'
+                else '未設定' end address1,
+            pr.street_name1 address2,
+            pr.street_name2 address3,
+            '' "tel",
+            pr.email,
+            date(pr.updated_at) "申込者情報最終更新日",
+            
+            -- 法人情報=================================================
+            c.name h_name,
+            -- c.name_kana,
+            c.zip_code h_zipcode,
+            case
+                when c.prefecture_code = 1 then '北海道'
+                when c.prefecture_code = 2 then '青森県'
+                when c.prefecture_code = 3 then '岩手県'
+                when c.prefecture_code = 4 then '宮城県'
+                when c.prefecture_code = 5 then '秋田県'
+                when c.prefecture_code = 6 then '山形県'
+                when c.prefecture_code = 7 then '福島県'
+                when c.prefecture_code = 8 then '茨城県'
+                when c.prefecture_code = 9 then '栃木県'
+                when c.prefecture_code = 10 then '群馬県'
+                when c.prefecture_code = 11 then '埼玉県'
+                when c.prefecture_code = 12 then '千葉県'
+                when c.prefecture_code = 13 then '東京都'
+                when c.prefecture_code = 14 then '神奈川県'
+                when c.prefecture_code = 15 then '新潟県'
+                when c.prefecture_code = 16 then '富山県'
+                when c.prefecture_code = 17 then '石川県'
+                when c.prefecture_code = 18 then '福井県'
+                when c.prefecture_code = 19 then '山梨県'
+                when c.prefecture_code = 20 then '長野県'
+                when c.prefecture_code = 21 then '岐阜県'
+                when c.prefecture_code = 22 then '静岡県'
+                when c.prefecture_code = 23 then '愛知県'
+                when c.prefecture_code = 24 then '三重県'
+                when c.prefecture_code = 25 then '滋賀県'
+                when c.prefecture_code = 26 then '京都府'
+                when c.prefecture_code = 27 then '大阪府'
+                when c.prefecture_code = 28 then '兵庫県'
+                when c.prefecture_code = 29 then '奈良県'
+                when c.prefecture_code = 30 then '和歌山県'
+                when c.prefecture_code = 31 then '鳥取県'
+                when c.prefecture_code = 32 then '島根県'
+                when c.prefecture_code = 33 then '岡山県'
+                when c.prefecture_code = 34 then '広島県'
+                when c.prefecture_code = 35 then '山口県'
+                when c.prefecture_code = 36 then '徳島県'
+                when c.prefecture_code = 37 then '香川県'
+                when c.prefecture_code = 38 then '愛媛県'
+                when c.prefecture_code = 39 then '高知県'
+                when c.prefecture_code = 40 then '福岡県'
+                when c.prefecture_code = 41 then '佐賀県'
+                when c.prefecture_code = 42 then '長崎県'
+                when c.prefecture_code = 43 then '熊本県'
+                when c.prefecture_code = 44 then '大分県'
+                when c.prefecture_code = 45 then '宮崎県'
+                when c.prefecture_code = 46 then '鹿児島県'
+                when c.prefecture_code = 47 then '沖縄県'
+                else '未設定' end h_address1,
+            c.street_name1 h_address2,
+            c.street_name2 h_address3,
+            c.phone_number,
+            date(c.updated_at) "法人情報最終更新日",
+            
+            -- 代表者情報=================================================
+            pr.representative_family_name representative_last_name,
+            pr.representative_first_name representative_first_name,
+            pr.representative_family_name_kana representative_kana_last,
+            pr.representative_first_name_kana representative_kana_first,
+            pr.representative_birthdate representative_birth_date,
+            
+            -- 付与情報=================================================
+            -- cs.amount "限度額"
+            ts.updated_at "カード申込最終更新日"
+            
+            
+        from  "ath-fsc-card-management-production".companies c
+            left join (
+                select * from(
+                    select *, row_number() over (partition by company_id order by updated_at desc) RowNum 
+                    from "ath-fsc-card-management-production".presidents
+                    where date(updated_at) = date(dt)
+                )
+                where RowNum = 1
+            ) pr on c.id = pr.company_id
+            left join (
+                select * from(
+                    select *, row_number() over (partition by company_id order by Date desc) RowNum 
+                    from "ath-fsc-credit-production".credit_scores
+                )
+                where RowNum = 1
+            ) cs on c.id = cs.company_id
+            left join (
+                select auth_company_id, date(updated_at) updated_at  from "ath-fsc-card-management-production".issuing_orders
+                where date(dt) = current_date - interval '1' day
+            ) ts on c.auth_company_id = ts.auth_company_id
+            
+        where date(c.updated_at) = date(c.dt)  -- 最終更新データに限定
+            and c.auth_company_id in ({{cidlist}})
+    )
+)
+
+select * from agg 
+where RowNum = 1
