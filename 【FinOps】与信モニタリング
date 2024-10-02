@@ -1,0 +1,55 @@
+/*
+作成背景
+    ┗顧客増にともなうadminのリソース不足のため、Redash化
+着地
+    ┗週3の与信モニタリングオペのための代替手段
+*/
+
+with main as(
+    select
+        cs.date "Date",
+        -- cs.dt "Dt_cs",
+        -- ml.dt "Dt_ml",
+        c.auth_company_id "CID",
+        c.name "企業名",
+        cs.rank "格付け",
+        cs.base_balance "基準残高",
+        cs.last_total_balance "口座残高",
+        cs.max_balance_last_5days "最大残高（過去5日間）",
+        cs.amount "限度額",
+        case when ml.logic = 1 then '固定限度額'
+            when ml.logic = 4 then '独自与信'
+            when ml.logic = 2 then '仮限度額'
+            when ml.logic = 5 then 'プール与信'
+            when ml.logic = 3 then '手動限度額'
+            else '未選択' end "ロジック",
+        -- ml.logic "ロジック_int",
+        cs.monthly_usage_amount "決済利用額",
+        cs.amount - cs.monthly_usage_amount "決済利用残額",
+        case when cs.rating = 2 then 'Red'
+            when cs.Rating = 1 then 'Yellow'
+            when cs.Rating = 4 then 'Orange'
+            else 'Green' end "ステータス",
+        -- cs.Rating "ステータス_int",
+        cs.alert_reason "メモ欄"
+        -- row_number() over (partition by c.auth_company_id order by cs.date desc) "RowNum"
+        
+        
+    from  "ath-fsc-credit-production".credit_scores cs
+        left join "ath-fsc-credit-production".companies c on cs.company_id = c.id and cs.date = date(c.dt)
+        left join (
+            select * from(  -- 当該月中の最新値を取得
+                select *, row_number() over (partition by company_id order by updated_at desc) "RowNum"
+                from(  -- 当該月データに限定
+                    select * from "ath-fsc-credit-production".monthly_limits
+                    where date(dt) = current_date - interval '1' day 
+                    and extract(year from date(date))*100 + extract(month from date(date)) = extract(year from current_date - interval '1' day)*100 + extract(month from current_date - interval '1' day)  -- 年月一致に限定
+                )
+            )
+            where RowNum = 1
+        ) ml on cs.company_id = ml.company_id
+    where cs.date = date(cs.dt)
+)
+    
+select * from main
+where "Date" = (select max(Date) from main)
